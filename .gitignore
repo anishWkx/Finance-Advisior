@@ -1,1 +1,48 @@
+# Environment variables and secrets
 .env
+.env.*
+!.env.example
+
+# Python environments
+.venv/
+venv/
+backend/.venv/
+
+# Python generated files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Frontend dependencies and builds
+node_modules/
+frontend/node_modules/
+frontend/dist/
+dist/
+
+# System files
+.DS_Store
+
+# Logs
+*.log
+
+# All environment files
+**/.env*
+!**/.env.example
+
+# Uploaded financial documents and local vector databases
+backend/storage/
+chroma/
+data/
+
+# Private backend environment files
+backend/.env
+backend/.envx
+
+# Local financial data and uploaded documents
+backend/sample_bank_statement.csv
+backend/storage/
+
+# Frontend starter assets not used by the application
+frontend/src/assets/react.svg
+frontend/src/assets/vite.svg
