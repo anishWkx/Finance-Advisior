@@ -1,9 +1,7 @@
 from langchain_ollama import OllamaEmbeddings
 from langchain_community.embeddings.bedrock import BedrockEmbeddings
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_pinecone import PineconeVectorStore
 from langchain_chroma import Chroma
-import pinecone
 import os
 from dotenv import load_dotenv
 load_dotenv()
