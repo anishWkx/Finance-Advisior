@@ -17,3 +17,14 @@ langchain-chroma
 sentence-transformers
 chromadb
 groq
+
+# PostgreSQL
+psycopg[binary,pool]
+
+# Authentication and validation
+bcrypt
+PyJWT
+email-validator
+langchain-postgres
+boto3
+psycopg2-binary

@@ -1,15 +1,12 @@
 from pathlib import Path
-from uuid import uuid4
 
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_chroma import Chroma
+from langchain_postgres import PGVector
 
-
-# Store the new vector database inside backend/storage/chroma
-BASE_DIR = Path(__file__).resolve().parents[2]
-CHROMA_DIR = BASE_DIR / "storage" / "chroma"
+from app.auth.database import DATABASE_URL
 
 COLLECTION_NAME = "financial_documents"
+EMBEDDING_LENGTH = 384
 
 _embedding_function = None
 _vector_store = None
@@ -22,7 +19,7 @@ def get_embedding_function():
         _embedding_function = HuggingFaceEmbeddings(
             model_name="sentence-transformers/all-MiniLM-L6-v2",
             model_kwargs={"device": "cpu"},
-            encode_kwargs={"normalize_embeddings": True}
+            encode_kwargs={"normalize_embeddings": True},
         )
 
     return _embedding_function
@@ -32,12 +29,13 @@ def get_vector_store():
     global _vector_store
 
     if _vector_store is None:
-        CHROMA_DIR.mkdir(parents=True, exist_ok=True)
-
-        _vector_store = Chroma(
+        _vector_store = PGVector(
+            embeddings=get_embedding_function(),
             collection_name=COLLECTION_NAME,
-            embedding_function=get_embedding_function(),
-            persist_directory=str(CHROMA_DIR)
+            connection=DATABASE_URL,
+            embedding_length=EMBEDDING_LENGTH,
+            create_extension=False,
+            use_jsonb=True,
         )
 
     return _vector_store
@@ -51,12 +49,10 @@ def store_chunks(chunks):
 
     texts = [chunk["content"] for chunk in chunks]
     metadatas = [chunk["metadata"] for chunk in chunks]
-    ids = [str(uuid4()) for _ in chunks]
 
     vector_store.add_texts(
         texts=texts,
         metadatas=metadatas,
-        ids=ids
     )
 
-    return len(ids)
+    return len(texts)

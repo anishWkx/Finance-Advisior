@@ -1,12 +1,14 @@
-from fastapi import APIRouter, HTTPException
+
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 
+from app.auth.security import get_current_user
 from app.rag.vector_store import get_vector_store
 from app.rag.llm_service import generate_answer
 
 router = APIRouter(prefix="/api", tags=["Chat"])
 
-DISTANCE_THRESHOLD = 1.2
+DISTANCE_THRESHOLD = 1.5
 RETRIEVAL_COUNT = 10
 MAX_CONTEXT_CHUNKS = 5
 
@@ -21,13 +23,18 @@ class ChatRequest(BaseModel):
 
 
 @router.post("/chat")
-async def chat(request: ChatRequest):
+async def chat(
+    request: ChatRequest,
+    current_user: dict = Depends(get_current_user),
+):
     try:
         vector_store = get_vector_store()
 
+        # Retrieve only chunks belonging to the authenticated user.
         results = vector_store.similarity_search_with_score(
             request.question,
-            k=RETRIEVAL_COUNT
+            k=RETRIEVAL_COUNT,
+            filter={"user_id": current_user["id"]},
         )
 
         unique_documents = []
@@ -73,7 +80,6 @@ async def chat(request: ChatRequest):
             context=context
         )
 
-        # Return no citations when the LLM refuses to answer.
         if answer.strip() == REFUSAL_MESSAGE:
             return {
                 "question": request.question,
