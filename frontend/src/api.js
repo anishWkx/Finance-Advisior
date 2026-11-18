@@ -33,9 +33,11 @@ async function handleResponse(response) {
       ? detail.map((item) => item.msg).join(', ')
       : detail
 
-    throw new Error(
+    const error = new Error(
       message || `Request failed with status ${response.status}`
     )
+    error.status = response.status
+    throw error
   }
 
   return data
@@ -70,11 +72,19 @@ export async function loginUser(email, password) {
 }
 
 export async function getCurrentUser() {
-  const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
-    headers: authHeaders(),
-  })
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 15000)
 
-  return handleResponse(response)
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+      headers: authHeaders(),
+      signal: controller.signal,
+    })
+
+    return await handleResponse(response)
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }
 
 export async function askAdvisor(question) {

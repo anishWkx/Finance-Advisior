@@ -326,8 +326,10 @@ function App() {
 
     getCurrentUser()
       .then(setUser)
-      .catch(() => {
-        clearToken()
+      .catch((error) => {
+        if (error.status === 401) {
+          clearToken()
+        }
         setUser(null)
       })
       .finally(() => setAuthLoading(false))
