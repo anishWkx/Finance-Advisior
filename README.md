@@ -1,6 +1,12 @@
 # Financial Advisor RAG
 
 An AI-powered financial document assistant that uses Retrieval-Augmented Generation (RAG) to answer questions using information extracted from uploaded financial documents. It retrieves relevant document passages and generates answers grounded in that context, with source references.
+ 
+## Live Demo
+
+- **Frontend:** https://finwise-financial-advisor.vercel.app
+- **Backend API:** https://finwise-financial-advisor-api.onrender.com
+- **API Documentation:** https://finwise-financial-advisor-api.onrender.com/docs
 
 ## Features
 
