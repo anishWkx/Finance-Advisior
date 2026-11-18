@@ -46,3 +46,9 @@ backend/storage/
 # Frontend starter assets not used by the application
 frontend/src/assets/react.svg
 frontend/src/assets/vite.svg
+
+# Local frontend backups
+frontend/backups/
+frontend/src/App.jsx.auth-integration-backup
+frontend/src/App.jsx.backup
+.neon

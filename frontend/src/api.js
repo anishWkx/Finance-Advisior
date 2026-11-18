@@ -2,6 +2,28 @@
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'
 
+const TOKEN_KEY = 'finwise-access-token'
+
+export function getToken() {
+  return localStorage.getItem(TOKEN_KEY)
+}
+
+export function saveToken(token) {
+  localStorage.setItem(TOKEN_KEY, token)
+}
+
+export function clearToken() {
+  localStorage.removeItem(TOKEN_KEY)
+}
+
+function authHeaders() {
+  const token = getToken()
+
+  return token
+    ? { Authorization: `Bearer ${token}` }
+    : {}
+}
+
 async function handleResponse(response) {
   const data = await response.json().catch(() => ({}))
 
@@ -19,13 +41,80 @@ async function handleResponse(response) {
   return data
 }
 
+export async function registerUser(name, email, password) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ name, email, password }),
+  })
+
+  const data = await handleResponse(response)
+  saveToken(data.access_token)
+  return data
+}
+
+export async function loginUser(email, password) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
+  })
+
+  const data = await handleResponse(response)
+  saveToken(data.access_token)
+  return data
+}
+
+export async function getCurrentUser() {
+  const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+    headers: authHeaders(),
+  })
+
+  return handleResponse(response)
+}
+
 export async function askAdvisor(question) {
   const response = await fetch(`${API_BASE_URL}/api/chat`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...authHeaders(),
     },
     body: JSON.stringify({ question }),
+  })
+
+  return handleResponse(response)
+}
+
+export async function getTransactionSummary(documentId) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/transactions/summary?document_id=${encodeURIComponent(documentId)}`,
+    {
+      headers: authHeaders(),
+    }
+  )
+
+  return handleResponse(response)
+}
+
+export async function getTransactions(documentId) {
+  const response = await fetch(
+    `${API_BASE_URL}/api/transactions/?document_id=${encodeURIComponent(documentId)}`,
+    {
+      headers: authHeaders(),
+    }
+  )
+
+  return handleResponse(response)
+}
+
+export async function getDocuments() {
+  const response = await fetch(`${API_BASE_URL}/api/documents/`, {
+    headers: authHeaders(),
   })
 
   return handleResponse(response)
@@ -39,6 +128,12 @@ export async function uploadDocument(file, onProgress) {
     formData.append('file', file)
 
     xhr.open('POST', `${API_BASE_URL}/api/documents/upload`)
+
+    const token = getToken()
+
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+    }
 
     xhr.upload.addEventListener('progress', (event) => {
       if (event.lengthComputable && onProgress) {
