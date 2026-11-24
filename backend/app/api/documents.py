@@ -1,3 +1,4 @@
+
 from pathlib import Path
 from uuid import uuid4
 
@@ -18,6 +19,7 @@ from app.auth.database import (
 from app.services.document_processor import extract_document
 from app.services.transaction_extractor import (
     extract_us_statement_transactions,
+    extract_generic_statement_transactions,
 )
 from app.services.chunking import chunk_document
 from app.rag.vector_store import store_chunks
@@ -123,7 +125,7 @@ async def upload_document(
     storage_uploaded = False
 
     try:
-        # 1. Extract document text using a temporary local file.
+        # 1. Extract document text.
         extracted_data = extract_document(str(file_path))
 
         total_characters = sum(
@@ -154,7 +156,7 @@ async def upload_document(
         for chunk in chunks:
             chunk["metadata"]["user_id"] = current_user["id"]
 
-        # 4. Extract supported bank statement transactions.
+        # 4. Extract transactions.
         transactions = []
 
         if extension == ".pdf":
@@ -172,12 +174,25 @@ async def upload_document(
                 transactions = extract_us_statement_transactions(
                     extracted_data
                 )
+            else:
+                transactions = extract_generic_statement_transactions(
+                    extracted_data
+                )
 
-                for transaction in transactions:
-                    transaction["document_id"] = document_id
-                    transaction["user_id"] = current_user["id"]
+        # 5. Attach document and user IDs.
+        for transaction in transactions:
+            transaction["document_id"] = document_id
+            transaction["user_id"] = current_user["id"]
 
-        # 5. Store original file in persistent Neon Object Storage.
+        extracted_count = len(transactions)
+
+        print(f"DEBUG: Extracted transactions: {extracted_count}")
+
+        if transactions:
+            print("DEBUG: First transaction:", transactions[0])
+            print("DEBUG: Last transaction:", transactions[-1])
+
+        # 6. Store original file.
         upload_to_storage(
             content=content,
             object_key=object_key,
@@ -185,10 +200,10 @@ async def upload_document(
         )
         storage_uploaded = True
 
-        # 6. Store RAG chunks in Neon PGVector.
+        # 7. Store RAG chunks.
         stored_chunks = store_chunks(chunks)
 
-        # 7. Save document metadata in Neon PostgreSQL.
+        # 8. Save document metadata.
         save_document(
             document_id=document_id,
             user_id=current_user["id"],
@@ -199,8 +214,17 @@ async def upload_document(
             chunk_count=stored_chunks,
         )
 
-        # 8. Save extracted transactions in Neon PostgreSQL.
+        # 9. Save ALL extracted transactions.
         saved_transactions = save_transactions(transactions)
+
+        print(f"DEBUG: Transactions saved: {saved_transactions}")
+
+        if saved_transactions != extracted_count:
+            raise RuntimeError(
+                f"Transaction count mismatch: "
+                f"{extracted_count} extracted, "
+                f"{saved_transactions} saved"
+            )
 
     except HTTPException:
         if storage_uploaded:
@@ -208,7 +232,6 @@ async def upload_document(
                 delete_from_storage(object_key)
             except Exception:
                 pass
-
         raise
 
     except Exception as error:
@@ -237,7 +260,7 @@ async def upload_document(
         "total_characters": total_characters,
         "total_chunks": len(chunks),
         "stored_chunks": stored_chunks,
-        "extracted_transactions": len(transactions),
+        "extracted_transactions": extracted_count,
         "saved_transactions": saved_transactions,
         "storage": "Neon Object Storage",
     }
